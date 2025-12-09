@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a125bc6d69504a00981f021815482eac, type: 3}
+  m_Name: starter_ship
+  m_EditorClassIdentifier: Assembly-CSharp::SpaceTravel.Game.ShipDefinition
+  Id: starter_ship
+  Layout:
+    Width: 6
+    Height: 5
+    Rows:
+    - Columns: 000000000100000001000000010000000200000000000000
+    - Columns: 000000000100000001000000010000000200000003000000
+    - Columns: 010000000100000001000000010000000200000003000000
+    - Columns: 000000000100000001000000010000000200000003000000
+    - Columns: 000000000100000001000000010000000200000000000000
