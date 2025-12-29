@@ -5,6 +5,13 @@ namespace SpaceTravel.Game
 {
     public static class ProductionService
     {
+        private static readonly ModuleLevelStats DefaultLevelStats = new()
+        {
+            Level = 1,
+            SpeedMultiplier = 1.0f,
+            OutputMultiplier = 1.0f
+        };
+
         public static void TickProduction(GameState state, double seconds, float globalOutputMultiplier, bool applyOverclock, IGameDefinitions defs)
         {
             if (state.Ship == null || state.Ship.Modules == null)
@@ -84,7 +91,7 @@ namespace SpaceTravel.Game
         private static ModuleLevelStats GetLevelStats(ModuleDefinition def, int level)
         {
             if (def.Levels == null || def.Levels.Length == 0)
-                return null;
+                return DefaultLevelStats;
 
             for (int i = 0; i < def.Levels.Length; i++)
             {
