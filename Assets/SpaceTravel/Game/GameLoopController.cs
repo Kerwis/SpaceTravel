@@ -17,6 +17,21 @@ namespace SpaceTravel.Game
 
         public GameState State { get; private set; }
 
+        public void ResetGame()
+        {
+            SaveService.DeleteSave();
+
+            var nowUtc = DateTime.UtcNow;
+            State = GameStateFactory.CreateNew(Definitions, nowUtc);
+            _lastOnlineTickUtc = nowUtc;
+
+#if UNITY_EDITOR
+            Debug.Log("[GameLoopController] Game state reset.");
+#endif
+
+            Initialized?.Invoke();
+        }
+
         private DateTime _lastOnlineTickUtc;
 
         private void Awake()
@@ -84,7 +99,10 @@ namespace SpaceTravel.Game
             if (pauseStatus)
             {
                 Save();
+                return;
             }
+
+            ResumeFromBackground();
         }
 
         private void OnApplicationQuit()
@@ -102,19 +120,14 @@ namespace SpaceTravel.Game
             SaveService.Save(State);
         }
 
-        public void ResetGame()
+        private void ResumeFromBackground()
         {
-            SaveService.DeleteSave();
-
             var nowUtc = DateTime.UtcNow;
-            State = GameStateFactory.CreateNew(Definitions, nowUtc);
+            if (State == null || Definitions == null)
+                return;
+
+            SimulationService.SimulateOffline(State, nowUtc, Definitions);
             _lastOnlineTickUtc = nowUtc;
-
-#if UNITY_EDITOR
-            Debug.Log("[GameLoopController] Game state reset.");
-#endif
-
-            Initialized?.Invoke();
         }
     }
 }
