@@ -57,31 +57,27 @@ namespace SpaceTravel.Game
             float outputMult = levelStats.OutputMultiplier * overclockMult * globalOutputMultiplier;
 
             module.RecipeProgressSeconds += (float)seconds;
+            int cyclesAvailable = (int)Math.Floor(module.RecipeProgressSeconds / cycleDuration);
+            if (cyclesAvailable <= 0)
+                return;
 
-            int safetyCounter = 0;
-            const int maxCyclesPerTick = 10000;
+            int maxByInputs = GetMaxCyclesForInputs(storage, recipe.Inputs);
+            int maxByOutputs = GetMaxCyclesForOutputs(storage, recipe.Outputs, outputMult, defs);
+            int cyclesToRun = Math.Min(cyclesAvailable, Math.Min(maxByInputs, maxByOutputs));
 
-            while (module.RecipeProgressSeconds >= cycleDuration)
+            if (cyclesToRun <= 0)
             {
-                if (safetyCounter++ > maxCyclesPerTick)
-                    break;
+                module.RecipeProgressSeconds = cycleDuration;
+                return;
+            }
 
-                if (!StorageService.CanConsumeInputs(storage, recipe.Inputs))
-                {
-                    module.RecipeProgressSeconds = cycleDuration;
-                    break;
-                }
+            module.RecipeProgressSeconds -= cycleDuration * cyclesToRun;
+            ApplyInputCycles(storage, recipe.Inputs, cyclesToRun);
+            ApplyOutputCycles(storage, recipe.Outputs, outputMult, cyclesToRun);
 
-                if (!CanStoreOutputs(storage, recipe.Outputs, outputMult, defs))
-                {
-                    module.RecipeProgressSeconds = cycleDuration;
-                    break;
-                }
-
-                module.RecipeProgressSeconds -= cycleDuration;
-
-                StorageService.ConsumeInputs(storage, recipe.Inputs);
-                ApplyOutputs(storage, recipe.Outputs, outputMult, defs);
+            if (cyclesAvailable > cyclesToRun)
+            {
+                module.RecipeProgressSeconds = cycleDuration;
             }
         }
 
@@ -99,78 +95,118 @@ namespace SpaceTravel.Game
             return def.Levels[def.Levels.Length - 1];
         }
 
-        private static bool CanStoreOutputs(StorageState storage, ResourceAmount[] outputs, float outputMult, IGameDefinitions defs)
+        private static int GetMaxCyclesForInputs(StorageState storage, ResourceAmount[] inputs)
         {
-            if (outputs == null || outputs.Length == 0)
-                return true;
+            if (inputs == null || inputs.Length == 0)
+                return int.MaxValue;
 
-            var requiredPerGroup = new Dictionary<ResourceGroup, float>();
+            int maxCycles = int.MaxValue;
 
-            foreach (var outRes in outputs)
+            foreach (var input in inputs)
             {
-                if (outRes == null || outRes.Amount <= 0f)
+                if (input == null || input.Amount <= 0f)
                     continue;
 
-                var resDef = outRes.Resource;
+                if (input.Resource == null)
+                    continue;
+
+                var resourceId = input.Resource.Id;
+                float current = storage.GetAmount(resourceId);
+                int possible = (int)Math.Floor(current / input.Amount);
+                if (possible < maxCycles)
+                    maxCycles = possible;
+            }
+
+            return maxCycles;
+        }
+
+        private static int GetMaxCyclesForOutputs(StorageState storage, ResourceAmount[] outputs, float outputMult, IGameDefinitions defs)
+        {
+            if (outputs == null || outputs.Length == 0)
+                return int.MaxValue;
+
+            var perGroupPerCycle = new Dictionary<ResourceGroup, float>();
+
+            foreach (var output in outputs)
+            {
+                if (output == null || output.Amount <= 0f)
+                    continue;
+
+                var resDef = output.Resource;
                 if (resDef == null)
                     continue;
 
+                float amount = output.Amount * outputMult;
+                if (amount <= 0f)
+                    continue;
+
                 var group = resDef.Group;
-                float amount = outRes.Amount * outputMult;
+                if (!perGroupPerCycle.ContainsKey(group))
+                    perGroupPerCycle[group] = 0f;
 
-                if (!requiredPerGroup.ContainsKey(group))
-                    requiredPerGroup[group] = 0f;
-
-                requiredPerGroup[group] += amount;
+                perGroupPerCycle[group] += amount;
             }
 
-            foreach (var kvp in requiredPerGroup)
+            int maxCycles = int.MaxValue;
+            foreach (var kvp in perGroupPerCycle)
             {
                 var group = kvp.Key;
-                var required = kvp.Value;
+                float perCycle = kvp.Value;
+                if (perCycle <= 0f)
+                    continue;
 
                 float capacity = storage.GetCapacity(group);
                 float current = StorageService.GetTotalAmountForGroup(storage, group, defs);
-
                 float free = capacity - current;
-                if (free + 0.0001f < required)
-                    return false;
+                if (free <= 0f)
+                    return 0;
+
+                int possible = (int)Math.Floor(free / perCycle);
+                if (possible < maxCycles)
+                    maxCycles = possible;
             }
 
-            return true;
+            return maxCycles;
         }
 
-        private static void ApplyOutputs(StorageState storage, ResourceAmount[] outputs, float outputMult, IGameDefinitions defs)
+        private static void ApplyInputCycles(StorageState storage, ResourceAmount[] inputs, int cycles)
+        {
+            if (inputs == null || inputs.Length == 0)
+                return;
+
+            foreach (var input in inputs)
+            {
+                if (input == null || input.Amount <= 0f)
+                    continue;
+
+                if (input.Resource == null)
+                    continue;
+
+                var resourceId = input.Resource.Id;
+                float current = storage.GetAmount(resourceId);
+                storage.SetAmount(resourceId, current - input.Amount * cycles);
+            }
+        }
+
+        private static void ApplyOutputCycles(StorageState storage, ResourceAmount[] outputs, float outputMult, int cycles)
         {
             if (outputs == null || outputs.Length == 0)
                 return;
 
-            foreach (var outRes in outputs)
+            foreach (var output in outputs)
             {
-                if (outRes == null || outRes.Amount <= 0f)
+                if (output == null || output.Amount <= 0f)
                     continue;
 
-                var resDef = outRes.Resource;
+                var resDef = output.Resource;
                 if (resDef == null)
                     continue;
 
-                float amount = outRes.Amount * outputMult;
-
-                var group = resDef.Group;
-                float capacity = storage.GetCapacity(group);
-                float currentGroupAmount = StorageService.GetTotalAmountForGroup(storage, group, defs);
-                float free = capacity - currentGroupAmount;
-
-                if (free <= 0f)
-                    continue;
-
-                float toStore = amount;
-                if (toStore > free)
-                    toStore = free;
+                float amount = output.Amount * outputMult * cycles;
 
                 var resourceId = resDef.Id;
                 float current = storage.GetAmount(resourceId);
-                storage.SetAmount(resourceId, current + toStore);
+                storage.SetAmount(resourceId, current + amount);
             }
         }
     }
