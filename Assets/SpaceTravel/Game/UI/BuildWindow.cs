@@ -106,7 +106,11 @@ namespace SpaceTravel.Game.UI
 
             _state = loop.State;
             _defs = loop.Definitions;
-            _initialized = true;
+
+            if (!_initialized)
+            {
+                _initialized = true;
+            }
         }
 
         private void RebuildModuleList()

@@ -17,7 +17,9 @@ MonoBehaviour:
   Category: 3
   Icon: {fileID: 8531294508301069230, guid: 90bc1c97fb42c0546a42d4af7486ca0c, type: 3}
   AllowedTileTypes: 02000000
-  BuildCost: []
+  BuildCost:
+  - Resource: {fileID: 11400000, guid: e0236d24b2f2898458f72e7bf2e1687b, type: 2}
+    Amount: 1
   SupportsOverclock: 0
   Recipes: []
   Levels: []

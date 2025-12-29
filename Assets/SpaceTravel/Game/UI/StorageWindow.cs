@@ -55,9 +55,6 @@ namespace SpaceTravel.Game.UI
 
         private void TryInit()
         {
-            if (_initialized)
-                return;
-
             var loop = GameLoopController.Instance;
             if (loop == null || loop.State == null || loop.Definitions == null)
                 return;
@@ -65,9 +62,13 @@ namespace SpaceTravel.Game.UI
             _state = loop.State;
             _defs = loop.Definitions;
 
-            BuildItems();
-            _initialized = true;
+            if (!_initialized)
+            {
+                BuildItems();
+                _initialized = true;
+            }
         }
+
 
         private void BuildItems()
         {

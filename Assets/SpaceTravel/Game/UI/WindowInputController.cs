@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using UnityEngine.InputSystem; // NEW
+using UnityEngine.InputSystem;
 
 namespace SpaceTravel.Game.UI
 {

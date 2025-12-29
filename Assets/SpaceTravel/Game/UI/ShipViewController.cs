@@ -29,6 +29,8 @@ namespace SpaceTravel.Game.UI
         private IGameDefinitions _defs;
         private ShipTileView[,] _tiles;
         private bool _initialized;
+        private int _gridWidth;
+        private int _gridHeight;
 
         public void OnTileClicked(ShipTileView tile)
         {
@@ -120,6 +122,11 @@ namespace SpaceTravel.Game.UI
             TryInitialize();
         }
 
+        private void OnRectTransformDimensionsChange()
+        {
+            UpdateGridLayoutCellSize();
+        }
+
         private void TryInitialize()
         {
             var loop = GameLoopController.Instance;
@@ -156,6 +163,8 @@ namespace SpaceTravel.Game.UI
             int h = shipDef.Layout.Height;
 
             _tiles = new ShipTileView[w, h];
+            _gridWidth = w;
+            _gridHeight = h;
 
             if (GridLayout != null)
             {
@@ -175,6 +184,25 @@ namespace SpaceTravel.Game.UI
                     _tiles[x, y] = instance;
                 }
             }
+
+            UpdateGridLayoutCellSize();
+        }
+
+        private void UpdateGridLayoutCellSize()
+        {
+            if (GridLayout == null || GridRoot == null)
+                return;
+
+            if (_gridWidth <= 0 || _gridHeight <= 0)
+                return;
+
+            var rect = GridRoot.rect;
+            if (rect.width <= 0f || rect.height <= 0f)
+                return;
+
+            float cellWidth = rect.width / _gridWidth;
+            float cellHeight = rect.height / _gridHeight;
+            GridLayout.cellSize = new Vector2(cellWidth, cellHeight);
         }
 
         private void ClearGrid()
@@ -186,6 +214,8 @@ namespace SpaceTravel.Game.UI
                 Destroy(GridRoot.GetChild(i).gameObject);
 
             _tiles = null;
+            _gridWidth = 0;
+            _gridHeight = 0;
         }
 
         private bool HasModuleAt(int x, int y)
